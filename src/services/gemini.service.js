@@ -1,40 +1,51 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({});
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
 /* ======================================================
-   🔹 Utility: Robust JSON Extractor
+   🔹 Safe Text Extraction (Aligned with whisper.service)
+====================================================== */
+const extractText = (response) => {
+  return (
+    response?.candidates?.[0]?.content?.parts
+      ?.map((p) => p.text || "")
+      .join(" ")
+      .trim() || ""
+  );
+};
+
+/* ======================================================
+   🔹 Robust JSON Extractor
 ====================================================== */
 const extractJSON = (text) => {
   try {
     if (!text) throw new Error("Empty response");
 
-    // Remove markdown fences
     const cleaned = text
       .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
 
-    // Try direct parse first
     try {
       return JSON.parse(cleaned);
     } catch (_) {}
 
-    // Try extracting largest JSON block
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    const match = cleaned.match(/\{[\s\S]*\}/);
 
-    if (!jsonMatch) {
-      throw new Error("No JSON found in response");
+    if (!match) {
+      throw new Error("No JSON found in Gemini response");
     }
 
-    return JSON.parse(jsonMatch[0]);
+    return JSON.parse(match[0]);
   } catch (error) {
     throw new Error("Failed to parse Gemini JSON response");
   }
 };
 
 /* ======================================================
-   🔹 Retry Wrapper (Handles 503 Overload)
+   🔹 Retry Wrapper (Handles 503)
 ====================================================== */
 const withRetry = async (fn, retries = 2) => {
   try {
@@ -86,15 +97,13 @@ ${resumeText}
 
     const response = await withRetry(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         temperature: 0.4,
       })
     );
 
-    const text =
-      response?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      response?.text;
+    const text = extractText(response);
 
     if (!text) {
       throw new Error("Empty Gemini response");
@@ -116,7 +125,6 @@ ${resumeText}
   } catch (error) {
     console.error("Gemini Question Generation Error:", error.message);
 
-    // Prevent server crash
     return {
       technical: [],
       project: [],
@@ -170,15 +178,13 @@ Return ONLY valid JSON:
 
     const response = await withRetry(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         temperature: 0.3,
       })
     );
 
-    const text =
-      response?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      response?.text;
+    const text = extractText(response);
 
     if (!text) throw new Error("Empty Gemini response");
 
