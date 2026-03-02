@@ -7,9 +7,6 @@ const ai = new GoogleGenAI({
 
 /**
  * Transcribe audio using Gemini 2.5 Flash
- * @param {string} filePath
- * @param {string} mimeType
- * @returns {string}
  */
 export async function transcribeAudio(filePath, mimeType = "audio/webm") {
   try {
@@ -18,10 +15,16 @@ export async function transcribeAudio(filePath, mimeType = "audio/webm") {
     }
 
     const audioBuffer = fs.readFileSync(filePath);
+
+    // Optional safety check (prevent extremely large uploads)
+    if (audioBuffer.length > 20 * 1024 * 1024) {
+      throw new Error("Audio file too large for inline Gemini processing");
+    }
+
     const base64Audio = audioBuffer.toString("base64");
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash", // 🔒 unchanged
       contents: [
         {
           role: "user",
@@ -30,7 +33,7 @@ export async function transcribeAudio(filePath, mimeType = "audio/webm") {
               text: `
 You are an accurate speech-to-text transcription engine.
 Transcribe the following interview answer exactly as spoken.
-Return only the transcript text.
+Return ONLY the transcript text.
 Do not summarize.
 Do not explain.
               `,
@@ -44,15 +47,24 @@ Do not explain.
           ],
         },
       ],
+      temperature: 0,
     });
 
-    if (!response.text) {
+    // 🔐 Safe extraction (instead of relying only on response.text)
+    const transcript =
+      response?.candidates?.[0]?.content?.parts
+        ?.map((part) => part.text || "")
+        .join(" ")
+        .trim() ||
+      response?.text?.trim();
+
+    if (!transcript) {
       throw new Error("Empty transcription returned.");
     }
 
-    return response.text.trim();
+    return transcript;
   } catch (error) {
-    console.error("Gemini 2.5 Flash Transcription Error:", error);
-    throw error;
+    console.error("Gemini 2.5 Flash Transcription Error:", error.message);
+    throw new Error("Audio transcription failed");
   }
 }
