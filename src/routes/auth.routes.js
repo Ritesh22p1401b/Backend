@@ -1,12 +1,12 @@
 import express from "express";
 import passport from "passport";
-import { register, login } from "../controllers/auth.controller.js";
+import { signup, login } from "../controllers/auth.controller.js";
 import { generateToken } from "../utils/jwt.js";
 
 const router = express.Router();
 
 // EMAIL AUTH
-router.post("/signup", register);
+router.post("/signup", signup);
 router.post("/login", login);
 
 // GOOGLE AUTH
