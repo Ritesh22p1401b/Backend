@@ -65,25 +65,37 @@ const withRetry = async (fn, retries = 2) => {
 };
 
 /* ======================================================
-   1️⃣ Generate Resume-Based Interview Questions
+   1️⃣ Generate STRICT Resume-Based Interview Questions
 ====================================================== */
+
 export const generateQuestions = async (resumeText) => {
   try {
-    if (!resumeText || resumeText.length < 50) {
-      throw new Error("Resume text too short");
+    if (!resumeText || resumeText.trim().length < 100) {
+      throw new Error("Resume text too short or empty");
     }
 
     const prompt = `
-You are a senior technical interviewer.
+You are a STRICT AI technical interviewer.
 
-STRICT RULES:
-- Questions must reference tools, frameworks, or projects mentioned in the resume.
-- Do NOT ask generic questions.
-- Do NOT number the questions.
-- Return ONLY valid JSON.
-- Do NOT include markdown or explanation.
+CRITICAL RULES:
+- Use ONLY the information inside the resume below.
+- DO NOT assume skills, tools, or experience not explicitly written.
+- DO NOT generate generic interview questions.
+- Every question MUST directly reference:
+  • A mentioned technology
+  • OR a mentioned project
+  • OR a mentioned role
+  • OR a mentioned achievement
+- If a skill is not present, DO NOT ask about it.
+- If resume lacks technical depth, create behavioral questions strictly from described experiences.
+- Before returning output, mentally verify each question is grounded in the resume.
 
-Return EXACT format:
+RETURN ONLY VALID JSON.
+NO markdown.
+NO explanation.
+NO numbering.
+
+Exact format:
 
 {
   "technical": ["", "", "", "", ""],
@@ -91,23 +103,22 @@ Return EXACT format:
   "behavioral": ["", ""]
 }
 
-Resume:
+RESUME CONTENT:
+"""
 ${resumeText}
+"""
 `;
 
     const response = await withRetry(() =>
       ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
-        temperature: 0.4,
+        temperature: 0.2, // 🔥 Lower temperature for strict grounding
       })
     );
 
     const text = extractText(response);
-
-    if (!text) {
-      throw new Error("Empty Gemini response");
-    }
+    if (!text) throw new Error("Empty Gemini response");
 
     const parsed = extractJSON(text);
 
