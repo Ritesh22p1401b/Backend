@@ -6,7 +6,7 @@ import { generateToken } from "../utils/jwt.js";
 const router = express.Router();
 
 // EMAIL AUTH
-router.post("/register", register);
+router.post("/signup", register);
 router.post("/login", login);
 
 // GOOGLE AUTH
