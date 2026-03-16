@@ -12,6 +12,8 @@ import { configurePassport } from "./config/passport.js";
 import authRoutes from "./routes/auth.routes.js";
 import resumeRoutes from "./routes/resume.routes.js";
 import interviewRoutes from "./routes/interview.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+
 
 const app = express();
 
@@ -79,6 +81,7 @@ app.use(passport.session());
 app.use("/api/auth", authRoutes);
 app.use("/api/resume", resumeRoutes);
 app.use("/api/interview", interviewRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 /* ------------------ HEALTH CHECK ------------------ */
 app.get("/api/health", (req, res) => {
